@@ -1,0 +1,11 @@
+services:
+  letta-web:
+    build: .
+    container_name: letta-web
+    ports:
+      - "8501:8501"
+    environment:
+      # 指向你已經起好咗嘅 Letta Server
+      - LETTA_HOST=192.168.1.252
+      - LETTA_API_KEY=5gV7VJmBVw8LUwQr
+    restart: always
