@@ -10,18 +10,28 @@ class MsgCont:
         self.type = type
         if self.type == "text":
             if len(self.content) > 0:
-                if MsgCont.is_json(self.content):
+                if is_json(self.content):
                     self.type = "code" 
 
-    @staticmethod         
-    def is_json(my_str : str):
-        try:
-            json.loads(my_str)
-        except ValueError:
-            return False
-        return True
+def is_json(my_str : str):
+    try:
+        json.loads(my_str)
+    except ValueError:
+        return False
+    return True
     
+def is_system_msg(content) -> bool:
+    # 嘗試解析 JSON
+    try:
+        data = json.loads(content)
+        # 如果符合你影張相入面嘅格式
+        if data.get("type") == "system_alert":
+            return True
+    except:
+        return False
     
+    return False 
+
 class LettaMsg:
     # 呢度只保留類型註解，唔好喺度初始化 List
     msg_type : str
@@ -37,9 +47,10 @@ class LettaMsg:
         content : str = getattr(msg, 'content', "")
         self.send_by = "assistant"
         self.is_think_mode = False
-        self.allow_dsp = True
+        self.allow_dsp = False
 
         if self.msg_type == "user_message":
+            self.allow_dsp = True
             self.is_think_mode = True
             self.send_by = "user"
             
@@ -66,14 +77,20 @@ class LettaMsg:
                             elif imgType == "url":
                                 self.dsp_cont.append(MsgCont(imgSrc.url, "image"))
             elif isinstance(content, str): 
-                if content.startswith("/nothink"):
-                    self.dsp_cont.append(MsgCont(content.replace("/nothink", "", 1).strip()))
-                    self.is_think_mode = False
-                elif content.startswith("/think"):
-                    self.dsp_cont.append(MsgCont(content.replace("/think", "", 1).strip()))
-                else:
-                    self.dsp_cont.append(MsgCont(content))
-            self.allow_dsp = True
+                if len(content) > 0:
+                    if is_json(content):
+                        if is_system_msg(content):
+                            self.allow_dsp = False
+                        else:
+                            self.dsp_cont.append(MsgCont(content, "code"))
+                    else:
+                        if content.startswith("/nothink"):
+                            self.dsp_cont.append(MsgCont(content.replace("/nothink", "", 1).strip()))
+                            self.is_think_mode = False
+                        elif content.startswith("/think"):
+                            self.dsp_cont.append(MsgCont(content.replace("/think", "", 1).strip()))
+                        else:
+                            self.dsp_cont.append(MsgCont(content))
         elif self.msg_type == "assistant_message":
             self.dsp_cont.append(MsgCont(content))
             self.allow_dsp = True      
@@ -101,7 +118,7 @@ class LettaMsg:
     @staticmethod
     def list(client, agent_id : str, chat_id : str):
         msgs = []
-        if chat_id == "-1":
+        if chat_id == "orig":
             msgs = client.agents.messages.list(agent_id = agent_id)
         else:
             msgs = client.conversations.messages.list(conversation_id = chat_id)

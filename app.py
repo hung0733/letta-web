@@ -23,10 +23,10 @@ letta = st.session_state.letta
 def process_chat_page(agent_id: str, chat_id: str):
     letta.chat_id = chat_id
     msgs = []
-    if chat_id and chat_id not in ["new", "-1"]:
+    if chat_id and chat_id not in ["new", "orig"]:
         st.write(f"正在顯示對話 ID: {chat_id}")
         msgs = LettaMsg.list(letta.client, agent_id, chat_id)
-    elif chat_id == "-1":
+    elif chat_id == "orig":
         st.write("呢度係默認對話界面。")
         msgs = LettaMsg.list(letta.client, agent_id, chat_id)
     else:
@@ -51,6 +51,9 @@ def process_chat_page(agent_id: str, chat_id: str):
                         st.error(cont.content)
                     elif cont.type == "warn":
                         st.warning(cont.content)
+                    elif cont.type == "sys_alert":
+                        with st.expander("思考過程"):
+                            st.write(cont.content)
                     else:
                         st.markdown(cont.content)
                 if msg.msg_type == "user_message":
@@ -84,10 +87,10 @@ with st.sidebar:
 
             # 建立「默認對話」Page 物件
             default_page = st.Page(
-                partial(process_chat_page, agent_id=letta.agent_id, chat_id="-1"),
+                partial(process_chat_page, agent_id=letta.agent_id, chat_id="orig"),
                 title="默認對話",
                 icon="💬",
-                url_path="-1",
+                url_path="orig",
             )
             pages.append(default_page)
 
@@ -123,7 +126,7 @@ if pages:
         current_id = pg.url_path.strip("/") if pg.url_path else None
 
         # 判斷係咪真正可刪除嘅對話
-        invalid_ids = ["-1", "new", ""]
+        invalid_ids = ["orig", "new", ""]
         is_real_chat = current_id not in invalid_ids and current_id is not None
 
         if st.button(
